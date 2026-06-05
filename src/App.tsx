@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import {
   defaultGeneratorConfig,
   barrierClearsStartBoxes,
+  barrierWithinPlacementBounds,
   createBarrier,
   generateMap,
   getShapeLabel,
@@ -804,12 +805,7 @@ function clampValue(value: number, min: number, max: number): number {
 }
 
 function barrierInsideField(barrier: Barrier, field: GeneratedMap["field"]): boolean {
-  return barrier.polygon.every((point) =>
-    point.x >= 0.05 &&
-    point.y >= 0.05 &&
-    point.x <= field.width - 0.05 &&
-    point.y <= field.height - 0.05,
-  );
+  return barrierWithinPlacementBounds(field, barrier);
 }
 
 function pointInPolygonLocal(point: Point, polygon: Point[]): boolean {

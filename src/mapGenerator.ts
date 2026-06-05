@@ -64,6 +64,8 @@ export type GeneratedMap = {
 const UNIT_SIDE = 0.9;
 const SQRT3 = Math.sqrt(3);
 const PLACEMENT_GAP = 1.0;
+const EDGE_CLEARANCE_X = 0.5;
+const EDGE_CLEARANCE_Y = 1.5;
 const START_BOX_WIDTH = 2;
 const START_BOX_HEIGHT = 1;
 const START_BOX_CLEARANCE = 0.5;
@@ -282,6 +284,10 @@ export function barrierClearsStartBoxes(field: GeneratedMap["field"], barrier: B
   return startBoxPolygons(field).every((box) => !polygonsTooClose(barrier.polygon, box, START_BOX_CLEARANCE));
 }
 
+export function barrierWithinPlacementBounds(field: GeneratedMap["field"], barrier: Barrier): boolean {
+  return polygonInsidePlacementBounds(field, barrier.polygon);
+}
+
 export function refreshGeneratedMap(map: GeneratedMap, config: GeneratorConfig, barriers = map.barriers): GeneratedMap {
   const evaluation = evaluateMap(map.field, barriers, config);
   return {
@@ -378,8 +384,7 @@ function isValidPair(field: GeneratedMap["field"], pair: Barrier[], existing: Ba
 }
 
 function isValidPlacement(field: GeneratedMap["field"], candidate: Barrier, existing: Barrier[]): boolean {
-  if (!polygonInsideField(field, candidate.polygon, 0.05)) return false;
-  if (candidate.y < 1.1 || candidate.y > field.height - 1.1) return false;
+  if (!barrierWithinPlacementBounds(field, candidate)) return false;
   if (!barrierClearsStartBoxes(field, candidate)) return false;
   if (candidate.polygon.some((point) => distance(point, field.bottomStart) < 0.35 || distance(point, field.topStart) < 0.35)) return false;
   if (pointInPolygon(field.bottomStart, candidate.polygon) || pointInPolygon(field.topStart, candidate.polygon)) return false;
@@ -826,9 +831,13 @@ function pointInPolygon(point: Point, polygon: Point[]): boolean {
   return inside;
 }
 
-function polygonInsideField(field: GeneratedMap["field"], polygon: Point[], margin: number): boolean {
+function polygonInsidePlacementBounds(field: GeneratedMap["field"], polygon: Point[]): boolean {
   return polygon.every(
-    (point) => point.x >= margin && point.y >= margin && point.x <= field.width - margin && point.y <= field.height - margin,
+    (point) =>
+      point.x >= EDGE_CLEARANCE_X &&
+      point.y >= EDGE_CLEARANCE_Y &&
+      point.x <= field.width - EDGE_CLEARANCE_X &&
+      point.y <= field.height - EDGE_CLEARANCE_Y,
   );
 }
 
