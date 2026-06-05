@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from "react";
 import {
   defaultGeneratorConfig,
   barrierClearsStartBoxes,
@@ -175,6 +175,14 @@ export function App() {
 
   function updateConfig(key: ConfigKey, value: number) {
     setConfig((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleConfigNumberChange(key: ConfigKey, event: ChangeEvent<HTMLInputElement>) {
+    const rawValue = event.currentTarget.value;
+    const nextValue = rawValue === "" ? 0 : Number(rawValue);
+    if (!Number.isFinite(nextValue)) return;
+    if (/^0+\d+$/.test(rawValue)) event.currentTarget.value = String(nextValue);
+    updateConfig(key, nextValue);
   }
 
   async function handleGenerate() {
@@ -416,7 +424,7 @@ export function App() {
                     max={field.max}
                     step={field.step}
                     value={config[field.key]}
-                    onChange={(event) => updateConfig(field.key, Number(event.target.value))}
+                    onChange={(event) => handleConfigNumberChange(field.key, event)}
                   />
                 </label>
               ))}
@@ -434,7 +442,7 @@ export function App() {
                     max={100}
                     step={1}
                     value={config[field.key]}
-                    onChange={(event) => updateConfig(field.key, Number(event.target.value))}
+                    onChange={(event) => handleConfigNumberChange(field.key, event)}
                   />
                   <span className="tuning-foot">
                     <span>{tuningText(field, Number(config[field.key]))}</span>
@@ -444,7 +452,7 @@ export function App() {
                       max={100}
                       step={1}
                       value={config[field.key]}
-                      onChange={(event) => updateConfig(field.key, Number(event.target.value))}
+                      onChange={(event) => handleConfigNumberChange(field.key, event)}
                     />
                   </span>
                   <span className="importance-inline">
@@ -532,7 +540,7 @@ export function App() {
                     max={field.max}
                     step={field.step}
                     value={config[field.key]}
-                    onChange={(event) => updateConfig(field.key, Number(event.target.value))}
+                    onChange={(event) => handleConfigNumberChange(field.key, event)}
                   />
                 </label>
               ))}
@@ -555,7 +563,7 @@ export function App() {
                       max={100}
                       step={1}
                       value={config[field.key]}
-                      onChange={(event) => updateConfig(field.key, Number(event.target.value))}
+                      onChange={(event) => handleConfigNumberChange(field.key, event)}
                     />
                     <span className="tuning-foot">
                       <span>{tuningText(field, Number(config[field.key]))}</span>
@@ -565,7 +573,7 @@ export function App() {
                         max={100}
                         step={1}
                         value={config[field.key]}
-                        onChange={(event) => updateConfig(field.key, Number(event.target.value))}
+                        onChange={(event) => handleConfigNumberChange(field.key, event)}
                       />
                     </span>
                     <span className="importance-inline">
