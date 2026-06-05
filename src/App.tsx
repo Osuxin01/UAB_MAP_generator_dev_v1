@@ -284,12 +284,12 @@ export function App() {
     if (!target) return;
     const pivot = target.polygon[selectedPivotIndex(target)];
     const nextPivot = nextPivotGridPoint(pivot, dx, dy, generated.field);
-    const moved = rebuildBarrier(
+    const moved = fitMovedBarrierToPlacementBounds(rebuildBarrier(
       target,
       target.x + nextPivot.x - pivot.x,
       target.y + nextPivot.y - pivot.y,
       target.angle,
-    );
+    ), generated.field, dx, dy);
     if (!barrierInsideField(moved, generated.field)) return;
     if (!barrierClearsStartBoxes(generated.field, moved)) return;
     updateBarrierWithSymmetricPartner(target, moved);
@@ -806,6 +806,34 @@ function clampValue(value: number, min: number, max: number): number {
 
 function barrierInsideField(barrier: Barrier, field: GeneratedMap["field"]): boolean {
   return barrierWithinPlacementBounds(field, barrier);
+}
+
+function fitMovedBarrierToPlacementBounds(
+  barrier: Barrier,
+  field: GeneratedMap["field"],
+  dx: number,
+  dy: number,
+): Barrier {
+  const bounds = polygonBounds(barrier.polygon);
+  let x = barrier.x;
+  let y = barrier.y;
+  if (dx < 0 && bounds.minX < 0.5) x += 0.5 - bounds.minX;
+  if (dx > 0 && bounds.maxX > field.width - 0.5) x -= bounds.maxX - (field.width - 0.5);
+  if (dy < 0 && bounds.minY < 1.5) y += 1.5 - bounds.minY;
+  if (dy > 0 && bounds.maxY > field.height - 1.5) y -= bounds.maxY - (field.height - 1.5);
+  return x === barrier.x && y === barrier.y ? barrier : rebuildBarrier(barrier, x, y, barrier.angle);
+}
+
+function polygonBounds(polygon: Point[]) {
+  return polygon.reduce(
+    (bounds, point) => ({
+      minX: Math.min(bounds.minX, point.x),
+      minY: Math.min(bounds.minY, point.y),
+      maxX: Math.max(bounds.maxX, point.x),
+      maxY: Math.max(bounds.maxY, point.y),
+    }),
+    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+  );
 }
 
 function pointInPolygonLocal(point: Point, polygon: Point[]): boolean {
