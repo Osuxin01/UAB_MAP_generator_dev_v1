@@ -638,6 +638,7 @@ button:disabled {
     z-index: 30;
     display: grid;
     grid-template-columns: 42px repeat(3, minmax(0, 1fr));
+    grid-template-areas: "menu generate save edit";
     gap: 8px;
     padding: 8px;
     border: 1px solid #c7d3da;
@@ -654,6 +655,22 @@ button:disabled {
     padding: 8px 10px;
     line-height: 1.15;
     white-space: nowrap;
+  }
+
+  .mobile-menu-action {
+    grid-area: menu;
+  }
+
+  .mobile-generate-action {
+    grid-area: generate;
+  }
+
+  .mobile-save-action {
+    grid-area: save;
+  }
+
+  .mobile-edit-action {
+    grid-area: edit;
   }
 
   .generator-layout {
@@ -803,25 +820,14 @@ button:disabled {
   .mobile-action-bar {
     grid-template-columns: 42px minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
-      "menu generate generate"
-      "save save edit";
+      "menu generate edit"
+      "save save save";
   }
 
-  .mobile-action-bar .menu-button {
-    grid-area: menu;
-  }
-
-  .mobile-action-bar .primary-button {
-    grid-area: generate;
-  }
-
-  .mobile-action-bar .secondary-button:nth-of-type(3) {
-    grid-area: save;
-    grid-column: auto;
-  }
-
-  .mobile-action-bar .secondary-button:nth-of-type(4) {
-    grid-area: edit;
+  .mobile-action-bar .primary-button,
+  .mobile-action-bar .secondary-button {
+    min-height: 42px;
+    padding: 8px 6px;
   }
 
   .mobile-edit-controls {

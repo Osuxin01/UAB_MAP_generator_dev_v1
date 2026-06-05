@@ -322,7 +322,7 @@ export function App() {
 
       <div className="mobile-action-bar">
         <button
-          className="menu-button"
+          className="menu-button mobile-menu-action"
           type="button"
           aria-label="設定を開く"
           aria-expanded={settingsOpen}
@@ -333,13 +333,13 @@ export function App() {
           <span />
           <span />
         </button>
-        <button className="primary-button" type="button" onClick={handleGenerate} disabled={isGenerating}>
+        <button className="primary-button mobile-generate-action" type="button" onClick={handleGenerate} disabled={isGenerating}>
           {isGenerating ? "生成中..." : "生成"}
         </button>
-        <button className="secondary-button" type="button" onClick={handleDownload} disabled={isGenerating}>
+        <button className="secondary-button mobile-save-action" type="button" onClick={handleDownload} disabled={isGenerating}>
           PNG保存
         </button>
-        <button className={`secondary-button ${editMode ? "active-button" : ""}`} type="button" onClick={() => setEditMode((value) => !value)} disabled={isGenerating}>
+        <button className={`secondary-button mobile-edit-action ${editMode ? "active-button" : ""}`} type="button" onClick={() => setEditMode((value) => !value)} disabled={isGenerating}>
           編集{editMode ? "ON" : "OFF"}
         </button>
       </div>
