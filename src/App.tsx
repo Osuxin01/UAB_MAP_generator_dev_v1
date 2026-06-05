@@ -265,11 +265,19 @@ export function App() {
     ));
   }
 
-  function updateBarrierWithSymmetricPartner(original: Barrier, updated: Barrier) {
+  function updateBarrierWithSymmetricPartner(
+    original: Barrier,
+    updated: Barrier,
+    options: { allowEdgeBand?: boolean; pivotIndex?: number } = {},
+  ) {
     const partner = symmetricPartnerOf(original);
     const mirrored = partner ? mirroredBarrierOf(updated, partner) : null;
+    const boundsCheck = options.allowEdgeBand ? barrierWithinOuterField : barrierInsideField;
+    if (!boundsCheck(updated, generated.field)) return;
+    if (options.allowEdgeBand && options.pivotIndex !== undefined && !pointWithinPlacementBounds(updated.polygon[options.pivotIndex], generated.field)) return;
     if (!barrierClearsStartBoxes(generated.field, updated)) return;
-    if (mirrored && !barrierInsideField(mirrored, generated.field)) return;
+    if (mirrored && !boundsCheck(mirrored, generated.field)) return;
+    if (mirrored && options.allowEdgeBand && options.pivotIndex !== undefined && !pointWithinPlacementBounds(mirrored.polygon[options.pivotIndex], generated.field)) return;
     if (mirrored && !barrierClearsStartBoxes(generated.field, mirrored)) return;
 
     updateEditedBarriers(generated.barriers.map((barrier) => {
@@ -298,12 +306,14 @@ export function App() {
   function rotateSelected(delta: number) {
     const target = selectedBarrier();
     if (!target) return;
-    const pivot = target.polygon[selectedPivotIndex(target)];
+    const pivotIndex = selectedPivotIndex(target);
+    const pivot = target.polygon[pivotIndex];
     const rotatedCenter = rotateAround({ x: target.x, y: target.y }, pivot, delta);
     const rotated = rebuildBarrier(target, rotatedCenter.x, rotatedCenter.y, target.angle + delta);
-    if (!barrierInsideField(rotated, generated.field)) return;
+    if (!barrierWithinOuterField(rotated, generated.field)) return;
+    if (!pointWithinPlacementBounds(rotated.polygon[pivotIndex], generated.field)) return;
     if (!barrierClearsStartBoxes(generated.field, rotated)) return;
-    updateBarrierWithSymmetricPartner(target, rotated);
+    updateBarrierWithSymmetricPartner(target, rotated, { allowEdgeBand: true, pivotIndex });
   }
 
   function deleteSelected() {
@@ -806,6 +816,19 @@ function clampValue(value: number, min: number, max: number): number {
 
 function barrierInsideField(barrier: Barrier, field: GeneratedMap["field"]): boolean {
   return barrierWithinPlacementBounds(field, barrier);
+}
+
+function barrierWithinOuterField(barrier: Barrier, field: GeneratedMap["field"]): boolean {
+  return barrier.polygon.every((point) =>
+    point.x >= 0 &&
+    point.y >= 0 &&
+    point.x <= field.width &&
+    point.y <= field.height,
+  );
+}
+
+function pointWithinPlacementBounds(point: Point, field: GeneratedMap["field"]): boolean {
+  return point.x >= 0.5 && point.y >= 1.5 && point.x <= field.width - 0.5 && point.y <= field.height - 1.5;
 }
 
 function fitMovedBarrierToPlacementBounds(
