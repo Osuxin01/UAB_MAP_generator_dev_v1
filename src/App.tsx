@@ -317,8 +317,11 @@ export function App() {
   }
 
   function deleteSelected() {
-    if (!selectedBarrierId) return;
-    updateEditedBarriers(generated.barriers.filter((barrier) => barrier.id !== selectedBarrierId), null);
+    const target = selectedBarrier();
+    if (!target) return;
+    const partner = symmetricPartnerOf(target);
+    const deleteIds = new Set([target.id, partner?.id]);
+    updateEditedBarriers(generated.barriers.filter((barrier) => !deleteIds.has(barrier.id)), null);
   }
 
   function addBarrier() {
