@@ -699,6 +699,7 @@ function drawMap(canvas: HTMLCanvasElement, generated: GeneratedMap, selectedBar
   drawTitle(ctx, generated);
   drawField(ctx, generated, metrics);
   drawGrid(ctx, generated, metrics);
+  drawStartBoxes(ctx, generated, metrics);
   drawStarts(ctx, generated, metrics);
   generated.barriers.forEach((barrier) => drawBarrier(
     ctx,
@@ -865,6 +866,23 @@ function drawGrid(ctx: CanvasRenderingContext2D, generated: GeneratedMap, metric
     ctx.lineTo(b.x, b.y);
     ctx.stroke();
   }
+}
+
+function drawStartBoxes(ctx: CanvasRenderingContext2D, generated: GeneratedMap, metrics: Metrics) {
+  const boxWidth = 2;
+  const boxHeight = 1;
+  const left = generated.field.width / 2 - boxWidth / 2;
+  const boxes = [
+    { x: left, y: 0 },
+    { x: left, y: generated.field.height - boxHeight },
+  ];
+
+  ctx.strokeStyle = "#324b59";
+  ctx.lineWidth = 3.8;
+  boxes.forEach((box) => {
+    const topLeft = worldToCanvas({ x: box.x, y: box.y + boxHeight }, metrics);
+    ctx.strokeRect(topLeft.x, topLeft.y, boxWidth * metrics.scale, boxHeight * metrics.scale);
+  });
 }
 
 function drawStarts(ctx: CanvasRenderingContext2D, generated: GeneratedMap, metrics: Metrics) {
