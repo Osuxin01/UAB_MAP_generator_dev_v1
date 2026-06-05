@@ -325,8 +325,9 @@ export function App() {
   }
 
   function addBarrier() {
-    const created = createBarrier(addShape, generated.field.width / 2, generated.field.height / 2, 0);
-    updateEditedBarriers([...generated.barriers, created], created.id);
+    const created = createBarrier(addShape, generated.field.width / 2, generated.field.height / 2 - 1.25, 0);
+    const mirrored = createBarrier(addShape, generated.field.width - created.x, generated.field.height - created.y, created.angle + 180);
+    updateEditedBarriers([...generated.barriers, created, mirrored], created.id);
     setSelectedVertexIndex(0);
   }
 
