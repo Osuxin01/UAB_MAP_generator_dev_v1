@@ -892,21 +892,14 @@ function drawStartBoxes(ctx: CanvasRenderingContext2D, generated: GeneratedMap, 
 
 function drawStarts(ctx: CanvasRenderingContext2D, generated: GeneratedMap, metrics: Metrics) {
   [
-    ["スタートA", generated.field.bottomStart, 1],
-    ["スタートB", generated.field.topStart, -1],
-  ].forEach(([label, point, direction]) => {
+    { x: generated.field.bottomStart.x, y: 0 },
+    { x: generated.field.topStart.x, y: generated.field.height },
+  ].forEach((point) => {
     const canvasPoint = worldToCanvas(point as Point, metrics);
     ctx.beginPath();
-    ctx.arc(canvasPoint.x, canvasPoint.y, 0.27 * metrics.scale, 0, Math.PI * 2);
+    ctx.arc(canvasPoint.x, canvasPoint.y, 0.16 * metrics.scale, 0, Math.PI * 2);
     ctx.fillStyle = "#d93a35";
     ctx.fill();
-    ctx.strokeStyle = "#891f1d";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = "#891f1d";
-    ctx.font = "700 20px 'Yu Gothic', Meiryo, Inter, system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(label as string, canvasPoint.x, canvasPoint.y - Number(direction) * 42);
   });
 }
 
