@@ -846,7 +846,7 @@ function drawGrid(ctx: CanvasRenderingContext2D, generated: GeneratedMap, metric
     const major = Math.abs(x - Math.round(x)) < 1e-9;
     const center = Math.abs(x - generated.field.width / 2) < 1e-9;
     ctx.strokeStyle = center ? "#324b59" : major ? "#6f8391" : "#bcc8d1";
-    ctx.lineWidth = center ? 2.8 : major ? 1.8 : 1.1;
+    ctx.lineWidth = center ? 3.8 : major ? 1.8 : 1.1;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
@@ -859,7 +859,7 @@ function drawGrid(ctx: CanvasRenderingContext2D, generated: GeneratedMap, metric
     const major = Math.abs(y - Math.round(y)) < 1e-9;
     const center = Math.abs(y - generated.field.height / 2) < 1e-9;
     ctx.strokeStyle = center ? "#324b59" : major ? "#6f8391" : "#bcc8d1";
-    ctx.lineWidth = center ? 2.8 : major ? 1.8 : 1.1;
+    ctx.lineWidth = center ? 3.8 : major ? 1.8 : 1.1;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
