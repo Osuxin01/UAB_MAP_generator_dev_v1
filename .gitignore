@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.vercel/
+__pycache__/
+*.local
+verification-*.png
+*verification*.png
+*.png
+*.zip
+*.7z
