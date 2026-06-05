@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import {
   defaultGeneratorConfig,
+  barrierClearsStartBoxes,
   createBarrier,
   generateMap,
   getShapeLabel,
@@ -266,7 +267,9 @@ export function App() {
   function updateBarrierWithSymmetricPartner(original: Barrier, updated: Barrier) {
     const partner = symmetricPartnerOf(original);
     const mirrored = partner ? mirroredBarrierOf(updated, partner) : null;
+    if (!barrierClearsStartBoxes(generated.field, updated)) return;
     if (mirrored && !barrierInsideField(mirrored, generated.field)) return;
+    if (mirrored && !barrierClearsStartBoxes(generated.field, mirrored)) return;
 
     updateEditedBarriers(generated.barriers.map((barrier) => {
       if (barrier.id === updated.id) return updated;
@@ -287,6 +290,7 @@ export function App() {
       target.angle,
     );
     if (!barrierInsideField(moved, generated.field)) return;
+    if (!barrierClearsStartBoxes(generated.field, moved)) return;
     updateBarrierWithSymmetricPartner(target, moved);
   }
 
@@ -297,6 +301,7 @@ export function App() {
     const rotatedCenter = rotateAround({ x: target.x, y: target.y }, pivot, delta);
     const rotated = rebuildBarrier(target, rotatedCenter.x, rotatedCenter.y, target.angle + delta);
     if (!barrierInsideField(rotated, generated.field)) return;
+    if (!barrierClearsStartBoxes(generated.field, rotated)) return;
     updateBarrierWithSymmetricPartner(target, rotated);
   }
 

@@ -64,6 +64,9 @@ export type GeneratedMap = {
 const UNIT_SIDE = 0.9;
 const SQRT3 = Math.sqrt(3);
 const PLACEMENT_GAP = 1.0;
+const START_BOX_WIDTH = 2;
+const START_BOX_HEIGHT = 1;
+const START_BOX_CLEARANCE = 0.5;
 
 const SHAPE_LABELS: Record<ShapeType, string> = {
   triangle: "三角形",
@@ -275,6 +278,10 @@ export function rebuildBarrier(barrier: Barrier, x: number, y: number, angle: nu
   return createBarrier(barrier.shape, x, y, ((angle % 360) + 360) % 360, barrier.id);
 }
 
+export function barrierClearsStartBoxes(field: GeneratedMap["field"], barrier: Barrier): boolean {
+  return startBoxPolygons(field).every((box) => !polygonsTooClose(barrier.polygon, box, START_BOX_CLEARANCE));
+}
+
 export function refreshGeneratedMap(map: GeneratedMap, config: GeneratorConfig, barriers = map.barriers): GeneratedMap {
   const evaluation = evaluateMap(map.field, barriers, config);
   return {
@@ -373,6 +380,7 @@ function isValidPair(field: GeneratedMap["field"], pair: Barrier[], existing: Ba
 function isValidPlacement(field: GeneratedMap["field"], candidate: Barrier, existing: Barrier[]): boolean {
   if (!polygonInsideField(field, candidate.polygon, 0.05)) return false;
   if (candidate.y < 1.1 || candidate.y > field.height - 1.1) return false;
+  if (!barrierClearsStartBoxes(field, candidate)) return false;
   if (candidate.polygon.some((point) => distance(point, field.bottomStart) < 0.35 || distance(point, field.topStart) < 0.35)) return false;
   if (pointInPolygon(field.bottomStart, candidate.polygon) || pointInPolygon(field.topStart, candidate.polygon)) return false;
   if (existing.some((barrier) => polygonsTooClose(candidate.polygon, barrier.polygon, PLACEMENT_GAP))) return false;
@@ -748,6 +756,23 @@ function visibleRatio(pointsA: Point[], pointsB: Point[], barriers: Barrier[]): 
 
 function sampleArea(xs: number[], ys: number[]): Point[] {
   return xs.flatMap((x) => ys.map((y) => ({ x, y })));
+}
+
+function startBoxPolygons(field: GeneratedMap["field"]): Point[][] {
+  const left = field.width / 2 - START_BOX_WIDTH / 2;
+  return [
+    rectanglePolygon(left, 0, START_BOX_WIDTH, START_BOX_HEIGHT),
+    rectanglePolygon(left, field.height - START_BOX_HEIGHT, START_BOX_WIDTH, START_BOX_HEIGHT),
+  ];
+}
+
+function rectanglePolygon(x: number, y: number, width: number, height: number): Point[] {
+  return [
+    { x, y },
+    { x: x + width, y },
+    { x: x + width, y: y + height },
+    { x, y: y + height },
+  ];
 }
 
 function polygonsTooClose(a: Point[], b: Point[], gap: number): boolean {
