@@ -192,13 +192,40 @@ export function App() {
     }
   }
 
-  function handleDownload() {
+  async function handleDownload() {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const fileName = `uab-map-score-${generated.evaluation.score}.png`;
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) return;
+
+    const file = new File([blob], fileName, { type: "image/png" });
+    const canShareImage =
+      typeof navigator !== "undefined" &&
+      "share" in navigator &&
+      "canShare" in navigator &&
+      navigator.canShare({ files: [file] });
+    const prefersMobileSave =
+      typeof window !== "undefined" && (window.matchMedia("(max-width: 720px)").matches || navigator.maxTouchPoints > 0);
+
+    if (prefersMobileSave && canShareImage) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "UABマップ",
+          text: "生成したUABマップです。",
+        });
+        return;
+      } catch (caught) {
+        if (caught instanceof DOMException && caught.name === "AbortError") return;
+      }
+    }
+
     const link = document.createElement("a");
-    link.download = `uab-map-score-${generated.evaluation.score}.png`;
-    link.href = canvas.toDataURL("image/png");
+    link.download = fileName;
+    link.href = URL.createObjectURL(blob);
     link.click();
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   }
 
   function updateEditedBarriers(nextBarriers: Barrier[], nextSelectedId = selectedBarrierId) {
