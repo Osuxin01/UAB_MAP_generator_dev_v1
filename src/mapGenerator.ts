@@ -790,8 +790,8 @@ function startPointsForField(width: number, height: number): { bottomStart: Poin
   const box = startBoxSizeForField(width, height);
   if (isDiagonalStartField(width, height)) {
     return {
-      bottomStart: { x: width - box.width / 2, y: box.height / 2 },
-      topStart: { x: box.width / 2, y: height - box.height / 2 },
+      bottomStart: { x: width, y: 0 },
+      topStart: { x: 0, y: height },
     };
   }
 
