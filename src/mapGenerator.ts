@@ -401,6 +401,7 @@ function isValidPlacement(field: GeneratedMap["field"], candidate: Barrier, exis
 }
 
 function evaluateMap(field: GeneratedMap["field"], barriers: Barrier[], config: GeneratorConfig): Evaluation {
+  const diagonalStarts = isDiagonalStartField(field.width, field.height);
   const centerPoints = sampleArea(
     [
       field.width * 0.12,
@@ -413,9 +414,9 @@ function evaluateMap(field: GeneratedMap["field"], barriers: Barrier[], config: 
     ],
     [field.height * 0.42, field.height * 0.5, field.height * 0.58],
   );
-  const bottomCenterOpen = coverVerticesToAreaOpenRatio(field, barriers, centerPoints, false);
-  const topCenterOpen = coverVerticesToAreaOpenRatio(field, barriers, centerPoints, true);
-  const crossOpen = controlledAreaOpenRatio(field, barriers);
+  const bottomCenterOpen = coverVerticesToAreaOpenRatio(field, barriers, centerPoints, false, diagonalStarts);
+  const topCenterOpen = coverVerticesToAreaOpenRatio(field, barriers, centerPoints, true, diagonalStarts);
+  const crossOpen = diagonalStarts ? diagonalControlledOpenRatio(field, barriers) : controlledAreaOpenRatio(field, barriers);
   const weights = normalizedScoreImportance(config);
   const centralOpenTarget = centralAccessTarget(config.centralAccessWeight);
   const startSafety = startSafetyScore(field, barriers, isBlocked(field.bottomStart, field.topStart, barriers), config.safetyWeight);
@@ -519,9 +520,19 @@ function sideBalanceScore(field: GeneratedMap["field"], barriers: Barrier[], val
   if (!barriers.length) return 0;
   const left = barriers.filter((barrier) => barrier.x < field.width / 2).length;
   const right = barriers.length - left;
-  const imbalance = Math.abs(left - right) / barriers.length;
+  const leftRightImbalance = Math.abs(left - right) / barriers.length;
+  const diagonalImbalance = isDiagonalStartField(field.width, field.height)
+    ? diagonalSideImbalance(field, barriers)
+    : leftRightImbalance;
+  const imbalance = (leftRightImbalance + diagonalImbalance) / 2;
   const target = (1 - clamp(value, 0, 100) / 100) * 0.55;
   return clampScore(100 - Math.abs(imbalance - target) * 150);
+}
+
+function diagonalSideImbalance(field: GeneratedMap["field"], barriers: Barrier[]): number {
+  const bottomSide = barriers.filter((barrier) => distance(barrier, field.bottomStart) <= distance(barrier, field.topStart)).length;
+  const topSide = barriers.length - bottomSide;
+  return Math.abs(bottomSide - topSide) / barriers.length;
 }
 
 function controlledAreaOpenRatio(field: GeneratedMap["field"], barriers: Barrier[], inset = 1.5): number {
@@ -540,6 +551,21 @@ function controlledAreaOpenRatio(field: GeneratedMap["field"], barriers: Barrier
   }
 
   return total ? open / total : 0;
+}
+
+function diagonalControlledOpenRatio(field: GeneratedMap["field"], barriers: Barrier[]): number {
+  const crossOpen = controlledAreaOpenRatio(field, barriers);
+  const primaryDiagonalOpen = visibleRatio(
+    [field.bottomStart, { x: field.width * 0.72, y: field.height * 0.28 }, { x: field.width * 0.55, y: field.height * 0.45 }],
+    [field.topStart, { x: field.width * 0.28, y: field.height * 0.72 }, { x: field.width * 0.45, y: field.height * 0.55 }],
+    barriers,
+  );
+  const secondaryDiagonalOpen = visibleRatio(
+    sampleArea([field.width * 0.15, field.width * 0.35], [field.height * 0.15, field.height * 0.35]),
+    sampleArea([field.width * 0.65, field.width * 0.85], [field.height * 0.65, field.height * 0.85]),
+    barriers,
+  );
+  return crossOpen * 0.35 + primaryDiagonalOpen * 0.45 + secondaryDiagonalOpen * 0.2;
 }
 
 function insetGridPoints(field: GeneratedMap["field"], inset: number): Point[] {
@@ -580,10 +606,13 @@ function coverVerticesToAreaOpenRatio(
   barriers: Barrier[],
   targetPoints: Point[],
   topHalf: boolean,
+  diagonalStarts = false,
 ): number {
   const midY = field.height / 2;
   const sourceBarriers = barriers.filter((barrier) => (
-    topHalf ? barrier.y >= midY : barrier.y <= midY
+    diagonalStarts
+      ? belongsToTopStartSide(field, barrier) === topHalf
+      : topHalf ? barrier.y >= midY : barrier.y <= midY
   ));
   let total = 0;
   let open = 0;
@@ -599,6 +628,10 @@ function coverVerticesToAreaOpenRatio(
   }
 
   return total ? open / total : 0;
+}
+
+function belongsToTopStartSide(field: GeneratedMap["field"], point: Point): boolean {
+  return distance(point, field.topStart) < distance(point, field.bottomStart);
 }
 
 function startSafetyScore(
@@ -623,6 +656,8 @@ function startSafetyTarget(safetyValue: number): number {
 }
 
 function firstCoverSafetyScore(field: GeneratedMap["field"], barriers: Barrier[]): number {
+  if (isDiagonalStartField(field.width, field.height)) return diagonalFirstCoverSafetyScore(field, barriers);
+
   const checks: [Point, Point, "left" | "right", boolean][] = [
     [field.bottomStart, field.topStart, "left", false],
     [field.bottomStart, field.topStart, "right", false],
@@ -635,6 +670,36 @@ function firstCoverSafetyScore(field: GeneratedMap["field"], barriers: Barrier[]
 
     const otherBarriers = barriers.filter((barrier) => barrier !== target);
     const losScore = isBlocked(opponentStart, target, otherBarriers) ? 100 : 35;
+    const distanceScore = firstCoverDistanceScore(ownStart, target);
+    return losScore * 0.7 + distanceScore * 0.3;
+  });
+  return scores.reduce((total, score) => total + score, 0) / scores.length;
+}
+
+function diagonalFirstCoverSafetyScore(field: GeneratedMap["field"], barriers: Barrier[]): number {
+  const scores = [
+    startSideCoverSafety(field, barriers, field.bottomStart, field.topStart, false),
+    startSideCoverSafety(field, barriers, field.topStart, field.bottomStart, true),
+  ];
+  return scores.reduce((total, score) => total + score, 0) / scores.length;
+}
+
+function startSideCoverSafety(
+  field: GeneratedMap["field"],
+  barriers: Barrier[],
+  ownStart: Point,
+  opponentStart: Point,
+  topSide: boolean,
+): number {
+  const candidates = barriers
+    .filter((barrier) => belongsToTopStartSide(field, barrier) === topSide)
+    .sort((a, b) => distance(a, ownStart) - distance(b, ownStart))
+    .slice(0, 2);
+  if (!candidates.length) return 20;
+
+  const scores = candidates.map((target) => {
+    const blockers = barriers.filter((barrier) => barrier !== target);
+    const losScore = isBlocked(opponentStart, target, blockers) ? 100 : 35;
     const distanceScore = firstCoverDistanceScore(ownStart, target);
     return losScore * 0.7 + distanceScore * 0.3;
   });
@@ -679,7 +744,13 @@ function centralDensityScore(field: GeneratedMap["field"], barriers: Barrier[], 
 }
 
 function centralDensityRatio(field: GeneratedMap["field"], barriers: Barrier[]): number {
-  return barriers.filter((barrier) => isInCentralArea(field, barrier)).length / barriers.length;
+  if (!isDiagonalStartField(field.width, field.height)) {
+    return barriers.filter((barrier) => isInCentralArea(field, barrier)).length / barriers.length;
+  }
+
+  const centralHits = barriers.filter((barrier) => isInCentralArea(field, barrier)).length / barriers.length;
+  const diagonalHits = barriers.filter((barrier) => isNearPrimaryDiagonalCenter(field, barrier)).length / barriers.length;
+  return centralHits * 0.7 + diagonalHits * 0.3;
 }
 
 function centralDensityTarget(value: number): number {
@@ -693,12 +764,24 @@ function isInCentralArea(field: GeneratedMap["field"], barrier: Barrier): boolea
     barrier.y <= field.height * 0.62;
 }
 
+function isNearPrimaryDiagonalCenter(field: GeneratedMap["field"], barrier: Barrier): boolean {
+  const normalizedX = barrier.x / field.width;
+  const normalizedY = barrier.y / field.height;
+  return normalizedX >= 0.25 &&
+    normalizedX <= 0.75 &&
+    normalizedY >= 0.25 &&
+    normalizedY <= 0.75 &&
+    Math.abs(normalizedX + normalizedY - 1) <= 0.18;
+}
+
 function routeScore(field: GeneratedMap["field"], barriers: Barrier[], routeValue: number): number {
   if (!barriers.length) return 0;
+  const diagonalStarts = isDiagonalStartField(field.width, field.height);
   const midY = field.height / 2;
   const qualityScores = barriers.map((barrier) => {
-    const ownStart = barrier.y >= midY ? field.topStart : field.bottomStart;
-    const opponentStart = barrier.y >= midY ? field.bottomStart : field.topStart;
+    const topSide = diagonalStarts ? belongsToTopStartSide(field, barrier) : barrier.y >= midY;
+    const ownStart = topSide ? field.topStart : field.bottomStart;
+    const opponentStart = topSide ? field.bottomStart : field.topStart;
     const blockers = barriers.filter((item) => item !== barrier);
     const pathClear = !blockers.some((blocker) => segmentNearPolygon(ownStart, barrier, blocker.polygon, 0.28));
     const exposure = routeExposureRatio(ownStart, barrier, opponentStart, blockers);
