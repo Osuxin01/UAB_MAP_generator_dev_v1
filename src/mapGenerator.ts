@@ -66,8 +66,8 @@ const SQRT3 = Math.sqrt(3);
 const PLACEMENT_GAP = 1.0;
 const EDGE_CLEARANCE_X = 0.5;
 const EDGE_CLEARANCE_Y = 1.5;
-const START_BOX_WIDTH = 2;
-const START_BOX_HEIGHT = 1;
+const DEFAULT_START_BOX_WIDTH = 2;
+const DEFAULT_START_BOX_HEIGHT = 1;
 const START_BOX_CLEARANCE = 0.5;
 
 const SHAPE_LABELS: Record<ShapeType, string> = {
@@ -287,6 +287,12 @@ export function barrierClearsStartBoxes(field: GeneratedMap["field"], barrier: B
 
 export function barrierWithinPlacementBounds(field: GeneratedMap["field"], barrier: Barrier): boolean {
   return polygonInsidePlacementBounds(field, barrier.polygon);
+}
+
+export function startBoxSizeForField(width: number, height: number): { width: number; height: number } {
+  if (isUab1Field(width, height)) return { width: 1, height: 1 };
+  if (isUab5Field(width, height)) return { width: 2, height: 2 };
+  return { width: DEFAULT_START_BOX_WIDTH, height: DEFAULT_START_BOX_HEIGHT };
 }
 
 export function refreshGeneratedMap(map: GeneratedMap, config: GeneratorConfig, barriers = map.barriers): GeneratedMap {
@@ -765,37 +771,46 @@ function sampleArea(xs: number[], ys: number[]): Point[] {
 }
 
 function startBoxPolygons(field: GeneratedMap["field"]): Point[][] {
+  const box = startBoxSizeForField(field.width, field.height);
   if (isDiagonalStartField(field.width, field.height)) {
     return [
-      rectanglePolygon(field.width - START_BOX_WIDTH, 0, START_BOX_WIDTH, START_BOX_HEIGHT),
-      rectanglePolygon(0, field.height - START_BOX_HEIGHT, START_BOX_WIDTH, START_BOX_HEIGHT),
+      rectanglePolygon(field.width - box.width, 0, box.width, box.height),
+      rectanglePolygon(0, field.height - box.height, box.width, box.height),
     ];
   }
 
-  const left = field.width / 2 - START_BOX_WIDTH / 2;
+  const left = field.width / 2 - box.width / 2;
   return [
-    rectanglePolygon(left, 0, START_BOX_WIDTH, START_BOX_HEIGHT),
-    rectanglePolygon(left, field.height - START_BOX_HEIGHT, START_BOX_WIDTH, START_BOX_HEIGHT),
+    rectanglePolygon(left, 0, box.width, box.height),
+    rectanglePolygon(left, field.height - box.height, box.width, box.height),
   ];
 }
 
 function startPointsForField(width: number, height: number): { bottomStart: Point; topStart: Point } {
+  const box = startBoxSizeForField(width, height);
   if (isDiagonalStartField(width, height)) {
     return {
-      bottomStart: { x: width - START_BOX_WIDTH / 2, y: 0.5 },
-      topStart: { x: START_BOX_WIDTH / 2, y: height - 0.5 },
+      bottomStart: { x: width - box.width / 2, y: box.height / 2 },
+      topStart: { x: box.width / 2, y: height - box.height / 2 },
     };
   }
 
   return {
-    bottomStart: { x: width / 2, y: 0.5 },
-    topStart: { x: width / 2, y: height - 0.5 },
+    bottomStart: { x: width / 2, y: box.height / 2 },
+    topStart: { x: width / 2, y: height - box.height / 2 },
   };
 }
 
 function isDiagonalStartField(width: number, height: number): boolean {
-  return (Math.abs(width - 6.5) < 1e-9 && Math.abs(height - 12) < 1e-9) ||
-    (Math.abs(width - 10) < 1e-9 && Math.abs(height - 25) < 1e-9);
+  return isUab1Field(width, height) || isUab5Field(width, height);
+}
+
+function isUab1Field(width: number, height: number): boolean {
+  return Math.abs(width - 6.5) < 1e-9 && Math.abs(height - 12) < 1e-9;
+}
+
+function isUab5Field(width: number, height: number): boolean {
+  return Math.abs(width - 10) < 1e-9 && Math.abs(height - 25) < 1e-9;
 }
 
 function rectanglePolygon(x: number, y: number, width: number, height: number): Point[] {

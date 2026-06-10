@@ -8,6 +8,7 @@ import {
   getShapeLabel,
   rebuildBarrier,
   refreshGeneratedMap,
+  startBoxSizeForField,
   type Barrier,
   type GeneratedMap,
   type GeneratorConfig,
@@ -1021,8 +1022,7 @@ function drawCenterLines(ctx: CanvasRenderingContext2D, generated: GeneratedMap,
 }
 
 function drawStartBoxes(ctx: CanvasRenderingContext2D, generated: GeneratedMap, metrics: Metrics) {
-  const boxWidth = 2;
-  const boxHeight = 1;
+  const { width: boxWidth, height: boxHeight } = startBoxSizeForField(generated.field.width, generated.field.height);
   const boxes = [
     { x: clampNumber(generated.field.bottomStart.x - boxWidth / 2, 0, generated.field.width - boxWidth), y: 0 },
     { x: clampNumber(generated.field.topStart.x - boxWidth / 2, 0, generated.field.width - boxWidth), y: generated.field.height - boxHeight },
