@@ -909,9 +909,8 @@ function drawGrid(ctx: CanvasRenderingContext2D, generated: GeneratedMap, metric
     const a = worldToCanvas({ x, y: 0 }, metrics);
     const b = worldToCanvas({ x, y: generated.field.height }, metrics);
     const major = Math.abs(x - Math.round(x)) < 1e-9;
-    const center = Math.abs(x - generated.field.width / 2) < 1e-9;
-    ctx.strokeStyle = center ? "#324b59" : major ? "#6f8391" : "#bcc8d1";
-    ctx.lineWidth = center ? 3.8 : major ? 1.8 : 1.1;
+    ctx.strokeStyle = major ? "#6f8391" : "#bcc8d1";
+    ctx.lineWidth = major ? 1.8 : 1.1;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
@@ -922,14 +921,34 @@ function drawGrid(ctx: CanvasRenderingContext2D, generated: GeneratedMap, metric
     const a = worldToCanvas({ x: 0, y }, metrics);
     const b = worldToCanvas({ x: generated.field.width, y }, metrics);
     const major = Math.abs(y - Math.round(y)) < 1e-9;
-    const center = Math.abs(y - generated.field.height / 2) < 1e-9;
-    ctx.strokeStyle = center ? "#324b59" : major ? "#6f8391" : "#bcc8d1";
-    ctx.lineWidth = center ? 3.8 : major ? 1.8 : 1.1;
+    ctx.strokeStyle = major ? "#6f8391" : "#bcc8d1";
+    ctx.lineWidth = major ? 1.8 : 1.1;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
     ctx.stroke();
   }
+
+  drawCenterLines(ctx, generated, metrics);
+}
+
+function drawCenterLines(ctx: CanvasRenderingContext2D, generated: GeneratedMap, metrics: Metrics) {
+  ctx.strokeStyle = "#324b59";
+  ctx.lineWidth = 3.8;
+
+  const verticalA = worldToCanvas({ x: generated.field.width / 2, y: 0 }, metrics);
+  const verticalB = worldToCanvas({ x: generated.field.width / 2, y: generated.field.height }, metrics);
+  ctx.beginPath();
+  ctx.moveTo(verticalA.x, verticalA.y);
+  ctx.lineTo(verticalB.x, verticalB.y);
+  ctx.stroke();
+
+  const horizontalA = worldToCanvas({ x: 0, y: generated.field.height / 2 }, metrics);
+  const horizontalB = worldToCanvas({ x: generated.field.width, y: generated.field.height / 2 }, metrics);
+  ctx.beginPath();
+  ctx.moveTo(horizontalA.x, horizontalA.y);
+  ctx.lineTo(horizontalB.x, horizontalB.y);
+  ctx.stroke();
 }
 
 function drawStartBoxes(ctx: CanvasRenderingContext2D, generated: GeneratedMap, metrics: Metrics) {
