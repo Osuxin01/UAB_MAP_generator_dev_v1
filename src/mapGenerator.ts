@@ -131,13 +131,14 @@ export function validateConfig(config: GeneratorConfig): string | null {
 export function generateMap(config: GeneratorConfig, index = 1): GeneratedMap {
   const validation = validateConfig(config);
   if (validation) throw new Error(validation);
+  const starts = startPointsForField(config.fieldWidth, config.fieldHeight);
 
   const field = {
     width: config.fieldWidth,
     height: config.fieldHeight,
     gridSize: config.gridSize,
-    bottomStart: { x: config.fieldWidth / 2, y: 0.5 },
-    topStart: { x: config.fieldWidth / 2, y: config.fieldHeight - 0.5 },
+    bottomStart: starts.bottomStart,
+    topStart: starts.topStart,
   };
   const shapeCounts = getShapeCounts(config);
   const expectedCount = Object.values(shapeCounts).reduce((total, count) => total + count, 0);
@@ -764,11 +765,37 @@ function sampleArea(xs: number[], ys: number[]): Point[] {
 }
 
 function startBoxPolygons(field: GeneratedMap["field"]): Point[][] {
+  if (isDiagonalStartField(field.width, field.height)) {
+    return [
+      rectanglePolygon(field.width - START_BOX_WIDTH, 0, START_BOX_WIDTH, START_BOX_HEIGHT),
+      rectanglePolygon(0, field.height - START_BOX_HEIGHT, START_BOX_WIDTH, START_BOX_HEIGHT),
+    ];
+  }
+
   const left = field.width / 2 - START_BOX_WIDTH / 2;
   return [
     rectanglePolygon(left, 0, START_BOX_WIDTH, START_BOX_HEIGHT),
     rectanglePolygon(left, field.height - START_BOX_HEIGHT, START_BOX_WIDTH, START_BOX_HEIGHT),
   ];
+}
+
+function startPointsForField(width: number, height: number): { bottomStart: Point; topStart: Point } {
+  if (isDiagonalStartField(width, height)) {
+    return {
+      bottomStart: { x: width - START_BOX_WIDTH / 2, y: 0.5 },
+      topStart: { x: START_BOX_WIDTH / 2, y: height - 0.5 },
+    };
+  }
+
+  return {
+    bottomStart: { x: width / 2, y: 0.5 },
+    topStart: { x: width / 2, y: height - 0.5 },
+  };
+}
+
+function isDiagonalStartField(width: number, height: number): boolean {
+  return (Math.abs(width - 6.5) < 1e-9 && Math.abs(height - 12) < 1e-9) ||
+    (Math.abs(width - 10) < 1e-9 && Math.abs(height - 25) < 1e-9);
 }
 
 function rectanglePolygon(x: number, y: number, width: number, height: number): Point[] {

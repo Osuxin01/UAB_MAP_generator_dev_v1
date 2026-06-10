@@ -1023,10 +1023,9 @@ function drawCenterLines(ctx: CanvasRenderingContext2D, generated: GeneratedMap,
 function drawStartBoxes(ctx: CanvasRenderingContext2D, generated: GeneratedMap, metrics: Metrics) {
   const boxWidth = 2;
   const boxHeight = 1;
-  const left = generated.field.width / 2 - boxWidth / 2;
   const boxes = [
-    { x: left, y: 0 },
-    { x: left, y: generated.field.height - boxHeight },
+    { x: clampNumber(generated.field.bottomStart.x - boxWidth / 2, 0, generated.field.width - boxWidth), y: 0 },
+    { x: clampNumber(generated.field.topStart.x - boxWidth / 2, 0, generated.field.width - boxWidth), y: generated.field.height - boxHeight },
   ];
 
   ctx.strokeStyle = "#324b59";
