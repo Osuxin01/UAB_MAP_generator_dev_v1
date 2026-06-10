@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FocusEvent, type MouseEvent } from "react";
 import {
   defaultGeneratorConfig,
   barrierClearsStartBoxes,
@@ -183,6 +183,21 @@ export function App() {
     if (!Number.isFinite(nextValue)) return;
     if (/^0+\d+$/.test(rawValue)) event.currentTarget.value = String(nextValue);
     updateConfig(key, nextValue);
+  }
+
+  function handleConfigNumberBlur(
+    key: ConfigKey,
+    event: FocusEvent<HTMLInputElement>,
+    step: number,
+    min: number,
+    max: number,
+  ) {
+    const rawValue = event.currentTarget.value;
+    const nextValue = rawValue === "" ? min : Number(rawValue);
+    if (!Number.isFinite(nextValue)) return;
+    const normalized = clampNumber(roundToStep(nextValue, step), min, max);
+    event.currentTarget.value = formatStepValue(normalized, step);
+    updateConfig(key, normalized);
   }
 
   async function handleGenerate() {
@@ -425,6 +440,7 @@ export function App() {
                     step={field.step}
                     value={config[field.key]}
                     onChange={(event) => handleConfigNumberChange(field.key, event)}
+                    onBlur={(event) => handleConfigNumberBlur(field.key, event, field.step, field.min, field.max)}
                   />
                 </label>
               ))}
@@ -453,6 +469,7 @@ export function App() {
                       step={1}
                       value={config[field.key]}
                       onChange={(event) => handleConfigNumberChange(field.key, event)}
+                      onBlur={(event) => handleConfigNumberBlur(field.key, event, 1, 0, 100)}
                     />
                   </span>
                   <span className="importance-inline">
@@ -541,6 +558,7 @@ export function App() {
                     step={field.step}
                     value={config[field.key]}
                     onChange={(event) => handleConfigNumberChange(field.key, event)}
+                    onBlur={(event) => handleConfigNumberBlur(field.key, event, field.step, field.min, field.max)}
                   />
                 </label>
               ))}
@@ -574,6 +592,7 @@ export function App() {
                         step={1}
                         value={config[field.key]}
                         onChange={(event) => handleConfigNumberChange(field.key, event)}
+                        onBlur={(event) => handleConfigNumberBlur(field.key, event, 1, 0, 100)}
                       />
                     </span>
                     <span className="importance-inline">
@@ -824,6 +843,19 @@ function isOnGrid(value: number, grid: number): boolean {
 
 function clampValue(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function roundToStep(value: number, step: number): number {
+  return Math.round(value / step) * step;
+}
+
+function formatStepValue(value: number, step: number): string {
+  const decimals = Math.max(0, String(step).split(".")[1]?.length ?? 0);
+  return value.toFixed(decimals).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
 }
 
 function barrierInsideField(barrier: Barrier, field: GeneratedMap["field"]): boolean {
