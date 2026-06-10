@@ -20,8 +20,40 @@ import "./styles.css";
 const CANVAS_WIDTH = 1100;
 const CANVAS_HEIGHT = 1900;
 const PADDING = 92;
+const SCENARIO_SCALE = 2;
 
 type ConfigKey = keyof GeneratorConfig;
+
+type ImportedScenarioFile = {
+  version?: string;
+  scenario?: {
+    id?: string;
+    name?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    field?: {
+      id?: string;
+      name?: string;
+      width: number;
+      height: number;
+      gridSize: number;
+      barriers: ImportedBarrier[];
+      players?: unknown[];
+    };
+  };
+};
+
+type ImportedBarrier = {
+  id?: string;
+  shape: string;
+  anchorIndex?: number;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  rotation: number;
+  obstacleHeight?: number;
+};
 
 type ScoreTuningField = {
   key: ConfigKey;
@@ -140,6 +172,7 @@ const detailTuningFields = scoreTuningFields.filter((field) =>
 
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [config, setConfig] = useState<GeneratorConfig>(defaultGeneratorConfig);
   const [generated, setGenerated] = useState<GeneratedMap>(() => generateMap(defaultGeneratorConfig));
   const [error, setError] = useState<string | null>(null);
@@ -279,6 +312,70 @@ export function App() {
     link.href = URL.createObjectURL(blob);
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  }
+
+  function handleExportJson() {
+    const now = new Date().toISOString();
+    const payload = {
+      version: "1.0.0",
+      scenario: {
+        id: "scenario-uab-generated",
+        name: generated.name,
+        createdAt: now,
+        updatedAt: now,
+        field: {
+          id: "field-uab-generated",
+          name: "UAB generated field",
+          width: generated.field.width * SCENARIO_SCALE,
+          height: generated.field.height * SCENARIO_SCALE,
+          gridSize: generated.field.gridSize * SCENARIO_SCALE,
+          barriers: generated.barriers.map(exportBarrier),
+          players: [],
+        },
+      },
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.download = `uab-map-${Date.now()}.json`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  }
+
+  async function handleImportJson(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+
+    try {
+      const imported = JSON.parse(await file.text()) as ImportedScenarioFile;
+      const field = imported.scenario?.field;
+      if (!field || !Array.isArray(field.barriers)) throw new Error("field.barriers が見つかりません。");
+
+      const nextConfig = {
+        ...config,
+        fieldWidth: field.width / SCENARIO_SCALE,
+        fieldHeight: field.height / SCENARIO_SCALE,
+        gridSize: field.gridSize / SCENARIO_SCALE,
+      };
+      const base = generateMap(nextConfig);
+      const barriers = field.barriers
+        .map(importBarrier)
+        .filter((barrier): barrier is Barrier => barrier !== null);
+      const nextMap = refreshGeneratedMap({
+        ...base,
+        name: imported.scenario?.name || "インポートマップ",
+        barriers,
+      }, nextConfig, barriers);
+
+      setConfig(nextConfig);
+      setGenerated(nextMap);
+      setSelectedBarrierId(null);
+      setSelectedVertexIndex(0);
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? `JSONインポートに失敗しました: ${caught.message}` : "JSONインポートに失敗しました。");
+    }
   }
 
   function updateEditedBarriers(nextBarriers: Barrier[], nextSelectedId = selectedBarrierId) {
@@ -482,6 +579,20 @@ export function App() {
                   />
                 </label>
               ))}
+              <div className="json-actions">
+                <button className="secondary-button" type="button" onClick={() => importInputRef.current?.click()}>
+                  JSON読込
+                </button>
+                <button className="secondary-button" type="button" onClick={handleExportJson}>
+                  JSON保存
+                </button>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={handleImportJson}
+                />
+              </div>
             </div>
             <div className="tuning-list">
               {basicTuningFields.map((field) => (
@@ -770,6 +881,60 @@ function importanceLevel(value: number): number {
 
 function importanceValueFromLevel(level: number): number {
   return [0, 6, 12, 18, 30, 50][level] ?? 18;
+}
+
+function exportBarrier(barrier: Barrier): ImportedBarrier {
+  const size = exportBarrierSize(barrier.shape);
+  return {
+    id: barrier.id,
+    shape: exportShape(barrier.shape),
+    anchorIndex: defaultAnchorIndex(barrier.shape),
+    x: barrier.x * SCENARIO_SCALE,
+    y: barrier.y * SCENARIO_SCALE,
+    width: size.width,
+    height: size.height,
+    rotation: barrier.angle,
+    obstacleHeight: 2.5,
+  };
+}
+
+function importBarrier(barrier: ImportedBarrier): Barrier | null {
+  const shape = importShape(barrier.shape);
+  if (!shape || !Number.isFinite(barrier.x) || !Number.isFinite(barrier.y) || !Number.isFinite(barrier.rotation)) return null;
+  return createBarrier(
+    shape,
+    barrier.x / SCENARIO_SCALE,
+    barrier.y / SCENARIO_SCALE,
+    barrier.rotation,
+    barrier.id,
+  );
+}
+
+function exportShape(shape: ShapeType): string {
+  if (shape === "triangle") return "small_triangle";
+  return shape;
+}
+
+function importShape(shape: string): ShapeType | null {
+  if (shape === "small_triangle" || shape === "triangle") return "triangle";
+  if (shape === "large_triangle") return "large_triangle";
+  if (shape === "diamond") return "diamond";
+  if (shape === "trapezoid") return "trapezoid";
+  return null;
+}
+
+function defaultAnchorIndex(shape: ShapeType): number {
+  if (shape === "triangle" || shape === "large_triangle") return 1;
+  return 0;
+}
+
+function exportBarrierSize(shape: ShapeType): { width: number; height: number } {
+  const smallHeight = 1.5588457268119895;
+  const largeHeight = 3.117691453623979;
+  if (shape === "large_triangle") return { width: 3.6, height: largeHeight };
+  if (shape === "trapezoid") return { width: 3.6, height: smallHeight };
+  if (shape === "diamond") return { width: 1.8, height: largeHeight };
+  return { width: 1.8, height: smallHeight };
 }
 
 function drawMap(canvas: HTMLCanvasElement, generated: GeneratedMap, selectedBarrierId: string | null, selectedVertexIndex: number) {
