@@ -171,7 +171,8 @@ button:disabled {
   font-weight: 700;
 }
 
-.input-row input {
+.input-row input,
+.input-row select {
   width: 112px;
   min-height: 34px;
   border: 1px solid #bccbd3;
@@ -179,6 +180,11 @@ button:disabled {
   padding: 6px 8px;
   background: #ffffff;
   color: #172834;
+}
+
+.input-row select {
+  width: 172px;
+  font-weight: 800;
 }
 
 .primary-button,

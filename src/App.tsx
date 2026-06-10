@@ -41,6 +41,13 @@ const IMPORTANCE_OPTIONS = [
 
 const ADD_SHAPE_OPTIONS: ShapeType[] = ["triangle", "trapezoid", "diamond", "large_triangle"];
 
+const FIELD_PRESETS = [
+  { key: "custom", label: "カスタム", width: null, height: null },
+  { key: "uab1", label: "UAB1 (6.5m x 12m)", width: 6.5, height: 12 },
+  { key: "uab3", label: "UAB3 (8m x 18m)", width: 8, height: 18 },
+  { key: "uab5", label: "UAB5 (10m x 25m)", width: 10, height: 25 },
+] as const;
+
 type Metrics = {
   scale: number;
   offsetX: number;
@@ -175,6 +182,26 @@ export function App() {
 
   function updateConfig(key: ConfigKey, value: number) {
     setConfig((current) => ({ ...current, [key]: value }));
+  }
+
+  function selectedFieldPreset(): string {
+    return FIELD_PRESETS.find(
+      (preset) =>
+        preset.width !== null &&
+        preset.height !== null &&
+        config.fieldWidth === preset.width &&
+        config.fieldHeight === preset.height,
+    )?.key ?? "custom";
+  }
+
+  function applyFieldPreset(presetKey: string) {
+    const preset = FIELD_PRESETS.find((candidate) => candidate.key === presetKey);
+    if (!preset || preset.width === null || preset.height === null) return;
+    setConfig((current) => ({
+      ...current,
+      fieldWidth: preset.width,
+      fieldHeight: preset.height,
+    }));
   }
 
   function handleConfigNumberChange(key: ConfigKey, event: ChangeEvent<HTMLInputElement>) {
@@ -430,6 +457,16 @@ export function App() {
               <p>普段はここだけ調整すれば生成できます。スライダーは点数ではなく、作りたいマップの傾向です。</p>
             </div>
             <div className="settings-grid">
+              <label className="input-row">
+                <span>マッププリセット</span>
+                <select value={selectedFieldPreset()} onChange={(event) => applyFieldPreset(event.target.value)}>
+                  {FIELD_PRESETS.map((preset) => (
+                    <option key={preset.key} value={preset.key}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               {basicConfigFields.map((field) => (
                 <label className="input-row" key={field.key}>
                   <span>{field.label}</span>
