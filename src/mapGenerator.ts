@@ -34,6 +34,7 @@ export type Point = {
 export type Barrier = {
   id: string;
   shape: ShapeType;
+  anchorIndex?: number;
   x: number;
   y: number;
   angle: number;
@@ -258,7 +259,14 @@ function createSnappedBarrier(
   return createBarrier(shape, x + grid.x - vertex.x, y + grid.y - vertex.y, angle);
 }
 
-export function createBarrier(shape: ShapeType, x: number, y: number, angle: number, id: string = crypto.randomUUID()): Barrier {
+export function createBarrier(
+  shape: ShapeType,
+  x: number,
+  y: number,
+  angle: number,
+  id: string = crypto.randomUUID(),
+  anchorIndex?: number,
+): Barrier {
   const localPolygon = shapePolygon(shape);
   const localSeams = seamLines(shape);
   const polygon = localPolygon.map((point) => translatePoint(rotatePoint(point, angle), x, y));
@@ -269,6 +277,7 @@ export function createBarrier(shape: ShapeType, x: number, y: number, angle: num
   return {
     id,
     shape,
+    anchorIndex,
     x,
     y,
     angle,
@@ -278,7 +287,7 @@ export function createBarrier(shape: ShapeType, x: number, y: number, angle: num
 }
 
 export function rebuildBarrier(barrier: Barrier, x: number, y: number, angle: number): Barrier {
-  return createBarrier(barrier.shape, x, y, ((angle % 360) + 360) % 360, barrier.id);
+  return createBarrier(barrier.shape, x, y, ((angle % 360) + 360) % 360, barrier.id, barrier.anchorIndex);
 }
 
 export function barrierClearsStartBoxes(field: GeneratedMap["field"], barrier: Barrier): boolean {
@@ -311,6 +320,8 @@ function mirrorBarrier(field: GeneratedMap["field"], barrier: Barrier): Barrier 
     field.width - barrier.x,
     field.height - barrier.y,
     (barrier.angle + 180) % 360,
+    undefined,
+    barrier.anchorIndex,
   );
 }
 

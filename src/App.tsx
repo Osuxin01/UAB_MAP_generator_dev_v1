@@ -329,7 +329,7 @@ export function App() {
           width: generated.field.width * SCENARIO_SCALE,
           height: generated.field.height * SCENARIO_SCALE,
           gridSize: generated.field.gridSize * SCENARIO_SCALE,
-          barriers: generated.barriers.map(exportBarrier),
+          barriers: generated.barriers.map((barrier) => exportBarrier(barrier, generated.field.width)),
           players: [],
         },
       },
@@ -360,7 +360,7 @@ export function App() {
       };
       const base = generateMap(nextConfig);
       const barriers = field.barriers
-        .map(importBarrier)
+        .map((barrier) => importBarrier(barrier, nextConfig.fieldWidth))
         .filter((barrier): barrier is Barrier => barrier !== null);
       const nextMap = refreshGeneratedMap({
         ...base,
@@ -398,6 +398,7 @@ export function App() {
       generated.field.height - source.y,
       source.angle + 180,
       partner.id,
+      partner.anchorIndex ?? source.anchorIndex,
     );
   }
 
@@ -883,14 +884,16 @@ function importanceValueFromLevel(level: number): number {
   return [0, 6, 12, 18, 30, 50][level] ?? 18;
 }
 
-function exportBarrier(barrier: Barrier): ImportedBarrier {
+function exportBarrier(barrier: Barrier, fieldWidth: number): ImportedBarrier {
   const size = exportBarrierSize(barrier.shape);
+  const anchorIndex = normalizedAnchorIndex(barrier.shape, barrier.anchorIndex);
+  const anchor = barrier.polygon[anchorIndex] ?? { x: barrier.x, y: barrier.y };
   return {
     id: barrier.id,
     shape: exportShape(barrier.shape),
-    anchorIndex: defaultAnchorIndex(barrier.shape),
-    x: barrier.x * SCENARIO_SCALE,
-    y: barrier.y * SCENARIO_SCALE,
+    anchorIndex,
+    x: worldXToScenarioX(anchor.x, fieldWidth),
+    y: anchor.y * SCENARIO_SCALE,
     width: size.width,
     height: size.height,
     rotation: barrier.angle,
@@ -898,15 +901,17 @@ function exportBarrier(barrier: Barrier): ImportedBarrier {
   };
 }
 
-function importBarrier(barrier: ImportedBarrier): Barrier | null {
+function importBarrier(barrier: ImportedBarrier, fieldWidth: number): Barrier | null {
   const shape = importShape(barrier.shape);
   if (!shape || !Number.isFinite(barrier.x) || !Number.isFinite(barrier.y) || !Number.isFinite(barrier.rotation)) return null;
-  return createBarrier(
+  const anchorIndex = normalizedAnchorIndex(shape, barrier.anchorIndex);
+  return createBarrierFromAnchor(
     shape,
-    barrier.x / SCENARIO_SCALE,
+    scenarioXToWorldX(barrier.x, fieldWidth),
     barrier.y / SCENARIO_SCALE,
     barrier.rotation,
     barrier.id,
+    anchorIndex,
   );
 }
 
@@ -926,6 +931,33 @@ function importShape(shape: string): ShapeType | null {
 function defaultAnchorIndex(shape: ShapeType): number {
   if (shape === "triangle" || shape === "large_triangle") return 1;
   return 0;
+}
+
+function normalizedAnchorIndex(shape: ShapeType, anchorIndex: number | undefined): number {
+  const maxIndex = shape === "triangle" || shape === "large_triangle" ? 2 : 3;
+  const index = typeof anchorIndex === "number" && Number.isInteger(anchorIndex) ? anchorIndex : defaultAnchorIndex(shape);
+  return clampValue(index, 0, maxIndex);
+}
+
+function createBarrierFromAnchor(
+  shape: ShapeType,
+  anchorX: number,
+  anchorY: number,
+  angle: number,
+  id: string | undefined,
+  anchorIndex: number,
+): Barrier {
+  const draft = createBarrier(shape, 0, 0, angle, id, anchorIndex);
+  const anchor = draft.polygon[anchorIndex] ?? draft.polygon[0] ?? { x: 0, y: 0 };
+  return createBarrier(shape, anchorX - anchor.x, anchorY - anchor.y, angle, id, anchorIndex);
+}
+
+function worldXToScenarioX(x: number, fieldWidth: number): number {
+  return (x - fieldWidth / 2) * SCENARIO_SCALE;
+}
+
+function scenarioXToWorldX(x: number, fieldWidth: number): number {
+  return x / SCENARIO_SCALE + fieldWidth / 2;
 }
 
 function exportBarrierSize(shape: ShapeType): { width: number; height: number } {
